@@ -22,11 +22,12 @@ export default function ProductLinesPage() {
   });
 
   return (
-    <div className="max-w-screen-2xl mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Product Line Cards</h1>
-        <p className="text-[13px] text-gray-500 dark:text-gray-400">
-          Explore all features included in each product line. Click any card to expand.
+    <div className="max-w-screen-xl mx-auto px-6 py-8">
+      {/* Page header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Product Lines</h1>
+        <p className="text-[14px] text-gray-500 dark:text-gray-400">
+          {PRODUCT_LINES.length} product lines across {families.length} families. Click any card to explore its features.
         </p>
       </div>
 
@@ -41,7 +42,7 @@ export default function ProductLinesPage() {
             placeholder="Search product lines..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-[13px] border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-52"
+            className="pl-8 pr-3 py-2 text-[13px] border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 shadow-sm w-52"
           />
         </div>
 
@@ -50,10 +51,10 @@ export default function ProductLinesPage() {
             <button
               key={fam}
               onClick={() => setSelectedFamily(fam)}
-              className={`text-[12px] px-3 py-1 rounded-full border transition-colors ${
+              className={`text-[12px] px-3 py-1.5 rounded-full border transition-all ${
                 selectedFamily === fam
-                  ? 'bg-blue-600 border-blue-600 text-white'
-                  : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600'
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 hover:text-blue-600 bg-white dark:bg-gray-800'
               }`}
             >
               {fam === 'all' ? 'All Families' : fam}
@@ -61,24 +62,24 @@ export default function ProductLinesPage() {
           ))}
         </div>
 
-        <span className="text-[12px] text-gray-500 dark:text-gray-400 ml-auto">
+        <span className="text-[12px] text-gray-400 dark:text-gray-500 ml-auto">
           {filteredPLs.length} product lines
         </span>
       </div>
 
       {/* Cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredPLs.map(pl => (
-          <ProductLineCard
-            key={pl.name}
-            productLine={pl.name}
-            family={pl.family}
-            rows={rows}
-          />
-        ))}
-      </div>
-
-      {filteredPLs.length === 0 && (
+      {filteredPLs.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredPLs.map(pl => (
+            <ProductLineCard
+              key={pl.name}
+              productLine={pl.name}
+              family={pl.family}
+              rows={rows}
+            />
+          ))}
+        </div>
+      ) : (
         <div className="py-16 text-center text-[14px] text-gray-500">
           No product lines match your search.
         </div>
