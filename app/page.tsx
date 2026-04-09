@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { ScopeRow, CellValue } from '@/types';
 import rawData from '@/data/scopeData.json';
 import { CATEGORIES } from '@/data/categories';
@@ -12,7 +12,6 @@ import ExportDropdown from '@/components/ExportDropdown';
 const initialRows = rawData as ScopeRow[];
 
 function HomeContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [rows, setRows] = useState<ScopeRow[]>(initialRows);
@@ -21,15 +20,6 @@ function HomeContent() {
     return pl ? [pl] : [];
   });
   const [search, setSearch] = useState('');
-
-  // Sync URL with selection
-  useEffect(() => {
-    if (selectedPLs.length === 1) {
-      router.replace(`/?pl=${encodeURIComponent(selectedPLs[0])}`, { scroll: false });
-    } else if (selectedPLs.length === 0) {
-      router.replace('/', { scroll: false });
-    }
-  }, [selectedPLs, router]);
 
   const handleCellChange = useCallback((rowId: string, field: string, value: CellValue | string) => {
     setRows(prev => prev.map(row => {
