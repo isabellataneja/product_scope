@@ -8,6 +8,15 @@
   --sheet-border: #e0e0e0;
   --sheet-text: #202124;
   --sheet-active: #1a73e8;
+  /* Commure Ambient design tokens (see docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md) */
+  --commure-navy: #0a1628;
+  --commure-navy-muted: #132337;
+  --commure-blue: #1e40af;
+  --commure-blue-bright: #2563eb;
+  --commure-teal: #0d9488;
+  --commure-cyan: #0891b2;
+  --commure-surface: #f8fafc;
+  --commure-recording: #0f172a;
 }
 
 .dark {
@@ -16,6 +25,8 @@
   --sheet-border: #374151;
   --sheet-text: #f9fafb;
   --sheet-active: #60a5fa;
+  --commure-surface: #0f172a;
+  --commure-recording: #020617;
 }
 
 * {
@@ -50,4 +61,12 @@ html {
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

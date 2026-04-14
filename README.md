@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Internal **product scope** workspace for **Commure Ambient** (Assist & Live). UI aligns with the mobile healthcare scribe context — see [`docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md`](./docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md).
 
 ## Getting Started
 

@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+/** Mirrors Commure Ambient app areas for design alignment (see docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md) */
 const tabs = [
-  { label: 'Home', href: '/' },
-  { label: 'Master Sheet', href: '/master' },
-  { label: 'Product Lines', href: '/product-lines' },
-  { label: 'Compare', href: '/compare' },
+  { label: 'Visits', href: '/' },
+  { label: 'My Scribes', href: '/master' },
+  { label: 'Copilot', href: '/product-lines', title: 'Copilot / AI Studio' },
+  { label: 'Inbox', href: '/compare' },
+  { label: 'Menu', href: '/menu' },
 ];
 
 export default function NavBar() {
@@ -31,31 +33,37 @@ export default function NavBar() {
   }
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white dark:bg-commure-navy border-b border-gray-200 dark:border-commure-navy-muted sticky top-0 z-50 shadow-sm">
       <div className="flex items-center justify-between px-4 h-12">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center">
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm2 2h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"/>
+        <div className="flex items-center gap-6 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-5 h-5 rounded bg-gradient-to-br from-commure-blue-bright to-commure-teal flex items-center justify-center flex-shrink-0">
+              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M12 3a9 9 0 100 18 9 9 0 000-18zm-1 4h2v5h3v2H11V7zm1 9a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>
               </svg>
             </div>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              Product Scope Comparison
-            </span>
+            <div className="min-w-0">
+              <span className="text-sm font-bold text-gray-900 dark:text-white tracking-tight block truncate">
+                Commure Ambient
+              </span>
+              <span className="text-[10px] text-gray-500 dark:text-commure-cyan/80 font-medium uppercase tracking-wide hidden sm:block">
+                Scope &amp; matrix (internal)
+              </span>
+            </div>
           </div>
-          <nav className="flex">
+          <nav className="flex overflow-x-auto no-scrollbar" aria-label="Primary">
             {tabs.map(tab => {
               const active = pathname === tab.href;
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
+                  title={'title' in tab ? tab.title : undefined}
                   className={[
-                    'px-4 h-12 flex items-center text-[13px] font-medium border-b-2 transition-colors',
+                    'px-3 sm:px-4 h-12 flex items-center text-[13px] font-semibold border-b-2 transition-colors whitespace-nowrap',
                     active
-                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300',
+                      ? 'border-commure-teal text-commure-navy dark:text-white dark:border-commure-cyan'
+                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-commure-navy dark:hover:text-white hover:border-gray-300 dark:hover:border-commure-teal/40',
                   ].join(' ')}
                 >
                   {tab.label}
@@ -66,7 +74,7 @@ export default function NavBar() {
         </div>
         <button
           onClick={toggleDark}
-          className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-commure-navy-muted transition-colors"
           title="Toggle dark mode"
           aria-label="Toggle dark mode"
         >
