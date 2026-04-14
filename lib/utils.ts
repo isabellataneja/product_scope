@@ -64,11 +64,25 @@ export function getFeatureCount(row: ScopeRow): number {
   return Object.values(row.productLines).filter(v => v === true || (typeof v === 'string' && v.trim())).length;
 }
 
+/** Whether this row is in scope for the product line (boolean true or non-empty string note). */
+export function isRowIncludedForProductLine(row: ScopeRow, productLine: string): boolean {
+  const val = row.productLines[productLine];
+  return val === true || (typeof val === 'string' && val.trim() !== '' && val.trim().toLowerCase() !== 'false');
+}
+
 export function getIncludedOfferings(rows: ScopeRow[], productLine: string): ScopeRow[] {
-  return rows.filter(row => {
-    const val = row.productLines[productLine];
-    return val === true || (typeof val === 'string' && val.trim() !== '' && val.trim().toLowerCase() !== 'false');
-  });
+  return rows.filter(row => isRowIncludedForProductLine(row, productLine));
+}
+
+/** Included offerings in a single category, sorted by name */
+export function getIncludedRowsInCategory(
+  rows: ScopeRow[],
+  productLine: string,
+  categoryId: string
+): ScopeRow[] {
+  return rows
+    .filter(r => r.category === categoryId && isRowIncludedForProductLine(r, productLine))
+    .sort((a, b) => a.offering.localeCompare(b.offering));
 }
 
 // For comparison: find rows where values differ across a set of product lines

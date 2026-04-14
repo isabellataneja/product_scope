@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { ScopeRow } from '@/types';
 import { PRODUCT_LINES } from '@/data/productLines';
 import { buildProductScopeSummary, formatSummaryAsText, type ProductScopeSummary } from '@/lib/scopeSummary';
+import { getIncludedRowsInCategory } from '@/lib/utils';
 
 interface Props {
   rows: ScopeRow[];
@@ -34,11 +35,34 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
   });
   const [pdfBusy, setPdfBusy] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
 
   const summary: ProductScopeSummary | null = useMemo(() => {
     if (!selected) return null;
     return buildProductScopeSummary(rows, selected);
   }, [rows, selected]);
+
+  useEffect(() => {
+    setExpandedCategories(new Set());
+  }, [selected]);
+
+  const categoryIncludedRows = useMemo(() => {
+    if (!summary) return new Map<string, ReturnType<typeof getIncludedRowsInCategory>>();
+    const map = new Map<string, ReturnType<typeof getIncludedRowsInCategory>>();
+    for (const c of summary.categoryBreakdown) {
+      map.set(c.categoryId, getIncludedRowsInCategory(rows, selected, c.categoryId));
+    }
+    return map;
+  }, [rows, selected, summary]);
+
+  function toggleCategory(categoryId: string) {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) next.delete(categoryId);
+      else next.add(categoryId);
+      return next;
+    });
+  }
 
   const downloadPdf = useCallback(async () => {
     if (!summary || !printRef.current) return;
@@ -202,15 +226,72 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
 
             <section className="mb-5">
               <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Coverage by category</h3>
-              <div className="grid gap-1.5 text-[12px]">
-                {summary.categoryBreakdown.map(c => (
-                  <div key={c.categoryId} className="flex justify-between gap-4 border-b border-gray-100 pb-1.5">
-                    <span className="text-gray-700 truncate">{c.label}</span>
-                    <span className="text-gray-600 flex-shrink-0">
-                      {c.included}/{c.total}
-                    </span>
-                  </div>
-                ))}
+              <p className="text-[11px] text-gray-500 mb-2">
+                Click a row with included items to expand and see which offerings are in scope.
+              </p>
+              <div className="rounded-lg border border-gray-100 divide-y divide-gray-100 text-[12px]">
+                {summary.categoryBreakdown.map(c => {
+                  const includedRows = categoryIncludedRows.get(c.categoryId) ?? [];
+                  const canExpand = c.included > 0;
+                  const isOpen = expandedCategories.has(c.categoryId);
+                  const panelId = `coverage-panel-${c.categoryId}`;
+
+                  return (
+                    <div key={c.categoryId} className="bg-white">
+                      <button
+                        type="button"
+                        id={`coverage-trigger-${c.categoryId}`}
+                        aria-expanded={canExpand ? isOpen : false}
+                        aria-controls={canExpand ? panelId : undefined}
+                        disabled={!canExpand}
+                        onClick={() => canExpand && toggleCategory(c.categoryId)}
+                        className={[
+                          'w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors',
+                          canExpand
+                            ? 'hover:bg-gray-50 cursor-pointer'
+                            : 'cursor-default opacity-80',
+                        ].join(' ')}
+                      >
+                        <span className="flex items-start gap-2 min-w-0 flex-1">
+                          <span
+                            className={[
+                              'mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center text-gray-400',
+                              canExpand ? '' : 'invisible',
+                            ].join(' ')}
+                            aria-hidden
+                          >
+                            <svg
+                              className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </span>
+                          <span className="text-gray-800 font-medium truncate">{c.label}</span>
+                        </span>
+                        <span className="text-gray-600 flex-shrink-0 tabular-nums">
+                          {c.included}/{c.total}
+                        </span>
+                      </button>
+                      {canExpand && isOpen && (
+                        <div
+                          id={panelId}
+                          role="region"
+                          aria-labelledby={`coverage-trigger-${c.categoryId}`}
+                          className="px-3 pb-3 pl-10 pr-3"
+                        >
+                          <ul className="space-y-1.5 text-[11px] text-gray-700 leading-snug border-l-2 border-blue-100 pl-3 ml-0.5">
+                            {includedRows.map(row => (
+                              <li key={row.id}>{row.offering}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
