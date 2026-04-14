@@ -4,7 +4,7 @@ import NavBar from '@/components/NavBar';
 
 export const metadata: Metadata = {
   title: 'Product Scope Comparison',
-  description: 'Interactive product line scope comparison tool',
+  description: 'Product scope one-pager, master sheet, and comparison tools',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

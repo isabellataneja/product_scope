@@ -1,0 +1,255 @@
+'use client';
+
+import { useCallback, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import type { ScopeRow } from '@/types';
+import { PRODUCT_LINES } from '@/data/productLines';
+import { buildProductScopeSummary, formatSummaryAsText, type ProductScopeSummary } from '@/lib/scopeSummary';
+
+interface Props {
+  rows: ScopeRow[];
+  initialProductLine?: string | null;
+}
+
+function renderBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className="font-semibold text-gray-900 dark:text-gray-100">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+export default function ScopeOnePager({ rows, initialProductLine }: Props) {
+  const [selected, setSelected] = useState<string>(() => {
+    if (initialProductLine && PRODUCT_LINES.some(p => p.name === initialProductLine)) {
+      return initialProductLine;
+    }
+    return PRODUCT_LINES[0]?.name ?? '';
+  });
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const summary: ProductScopeSummary | null = useMemo(() => {
+    if (!selected) return null;
+    return buildProductScopeSummary(rows, selected);
+  }, [rows, selected]);
+
+  const downloadPdf = useCallback(async () => {
+    if (!summary || !printRef.current) return;
+    setPdfBusy(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      const el = printRef.current;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 12;
+      const maxW = pageWidth - margin * 2;
+      const maxH = pageHeight - margin * 2;
+      let imgW = maxW;
+      let imgH = (canvas.height * imgW) / canvas.width;
+      if (imgH > maxH) {
+        imgH = maxH;
+        imgW = (canvas.width * imgH) / canvas.height;
+      }
+      pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
+
+      const safeName = summary.productLine.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 80);
+      pdf.save(`scope-one-pager-${safeName}.pdf`);
+    } catch (e) {
+      console.error(e);
+      alert('Could not generate PDF. Try print / Save as PDF instead.');
+    } finally {
+      setPdfBusy(false);
+    }
+  }, [summary]);
+
+  const copyText = useCallback(() => {
+    if (!summary) return;
+    void navigator.clipboard.writeText(formatSummaryAsText(summary));
+  }, [summary]);
+
+  return (
+    <div className="max-w-3xl mx-auto px-5 py-8 pb-16">
+      <div className="mb-8">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">
+          Internal · Product scope
+        </p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Scope one-pager</h1>
+        <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">
+          Condensed summary from the scope matrix: what this product line includes, where coverage is strongest, and
+          where scope overlaps other lines (redundancy). Generated deterministically from live data — no external API.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href={`/master?pl=${encodeURIComponent(selected)}`}
+            className="text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Open full master sheet →
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <Link href="/product-lines" className="text-[13px] text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
+            All product lines
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+        <div className="flex-1 min-w-0">
+          <label htmlFor="pl-select" className="block text-[12px] font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Product line
+          </label>
+          <select
+            id="pl-select"
+            value={selected}
+            onChange={e => setSelected(e.target.value)}
+            className="w-full text-[14px] border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          >
+            {PRODUCT_LINES.map(pl => (
+              <option key={pl.name} value={pl.name}>
+                {pl.name} — {pl.family}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={!summary || pdfBusy}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-[13px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {pdfBusy ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Building PDF…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download PDF
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={copyText}
+            disabled={!summary}
+            className="px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[13px] font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            Copy text
+          </button>
+        </div>
+      </div>
+
+      {/* Printable one-pager (light theme for PDF) */}
+      <div
+        ref={printRef}
+        id="scope-one-pager-print"
+        className="rounded-xl border border-gray-200 bg-white p-8 text-gray-900 shadow-sm"
+        style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
+      >
+        {summary && (
+          <>
+            <div className="border-b border-gray-200 pb-4 mb-4">
+              <h2 className="text-xl font-bold leading-tight">{summary.productLine}</h2>
+              <p className="text-[13px] text-gray-600 mt-1">
+                Family: <span className="font-medium text-gray-800">{summary.family}</span>
+                {' · '}
+                <span className="text-gray-500">{summary.includedCount} / {summary.totalRows} offerings · {summary.coveragePct}% coverage</span>
+              </p>
+              <p className="text-[11px] text-gray-400 mt-2">Generated {summary.generatedAt.slice(0, 10)} · Internal use</p>
+            </div>
+
+            <section className="mb-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Scope statement</h3>
+              <p className="text-[14px] leading-relaxed text-gray-800">{renderBold(summary.scopeStatement)}</p>
+            </section>
+
+            <section className="mb-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Digest</h3>
+              <ul className="space-y-2 text-[13px] leading-relaxed text-gray-800">
+                {summary.digestBullets.map((b, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-blue-600 flex-shrink-0">•</span>
+                    <span>{renderBold(b)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="mb-5">
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Coverage by category</h3>
+              <div className="grid gap-1.5 text-[12px]">
+                {summary.categoryBreakdown.map(c => (
+                  <div key={c.categoryId} className="flex justify-between gap-4 border-b border-gray-100 pb-1.5">
+                    <span className="text-gray-700 truncate">{c.label}</span>
+                    <span className="text-gray-600 flex-shrink-0">
+                      {c.included}/{c.total}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {summary.pricingNote && (
+              <section className="mb-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Pricing / commercial</h3>
+                <p className="text-[12px] leading-relaxed text-gray-800 bg-gray-50 border border-gray-100 rounded-lg p-3">
+                  {summary.pricingNote}
+                </p>
+              </section>
+            )}
+
+            <section>
+              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Redundancy & overlap</h3>
+              {summary.redundancyWithinFamily.length > 0 ? (
+                <div className="space-y-2 mb-3">
+                  {summary.redundancyWithinFamily.map((g, i) => (
+                    <p key={i} className="text-[12px] text-gray-800 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                      <strong className="text-amber-900">Same scope in family ({g.family}):</strong>{' '}
+                      {g.names.join(' · ')}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12px] text-gray-600 mb-3">No other line in this family has an identical full-matrix signature.</p>
+              )}
+              {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).length > 0 && (
+                <p className="text-[12px] text-gray-800">
+                  <strong className="text-gray-700">Matrix-identical elsewhere:</strong>{' '}
+                  {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).join(', ')}
+                </p>
+              )}
+              {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).length === 0 && summary.redundancyWithinFamily.length === 0 && (
+                <p className="text-[12px] text-gray-600">Unique scope signature in the current dataset.</p>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -48,10 +48,10 @@ export default function ProductLineCard({ productLine, family, rows }: Props) {
   return (
     <div
       className={`bg-gradient-to-br ${colors.gradient} rounded-xl border border-gray-200 dark:border-gray-700 p-4 cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5`}
-      onClick={() => router.push(`/?pl=${encodeURIComponent(productLine)}`)}
+      onClick={() => router.push(`/master?pl=${encodeURIComponent(productLine)}`)}
       role="button"
       tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && router.push(`/?pl=${encodeURIComponent(productLine)}`)}
+      onKeyDown={e => e.key === 'Enter' && router.push(`/master?pl=${encodeURIComponent(productLine)}`)}
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-4">

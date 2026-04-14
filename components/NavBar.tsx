@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 const tabs = [
-  { label: 'Master Sheet', href: '/' },
+  { label: 'Home', href: '/' },
+  { label: 'Master Sheet', href: '/master' },
   { label: 'Product Lines', href: '/product-lines' },
   { label: 'Compare', href: '/compare' },
 ];
