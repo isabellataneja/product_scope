@@ -36,6 +36,8 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
   const [pdfBusy, setPdfBusy] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
+  /** During PDF capture: expand all coverage rows + layout tuned for html2canvas */
+  const [pdfRendering, setPdfRendering] = useState(false);
 
   const summary: ProductScopeSummary | null = useMemo(() => {
     if (!selected) return null;
@@ -67,6 +69,11 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
   const downloadPdf = useCallback(async () => {
     if (!summary || !printRef.current) return;
     setPdfBusy(true);
+    setPdfRendering(true);
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+    await new Promise<void>(r => setTimeout(r, 80));
     try {
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
         import('html2canvas'),
@@ -78,8 +85,10 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
+        scrollY: -window.scrollY,
+        windowWidth: el.scrollWidth,
+        windowHeight: el.scrollHeight,
       });
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -88,15 +97,45 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 12;
-      const maxW = pageWidth - margin * 2;
-      const maxH = pageHeight - margin * 2;
-      let imgW = maxW;
-      let imgH = (canvas.height * imgW) / canvas.width;
-      if (imgH > maxH) {
-        imgH = maxH;
-        imgW = (canvas.width * imgH) / canvas.height;
+      const contentW = pageWidth - margin * 2;
+      const contentH = pageHeight - margin * 2;
+
+      const srcW = canvas.width;
+      const srcH = canvas.height;
+      const pdfTotalH = (srcH * contentW) / srcW;
+
+      let yMm = 0;
+      let pageIndex = 0;
+      while (yMm < pdfTotalH - 0.01) {
+        const sliceHmm = Math.min(contentH, pdfTotalH - yMm);
+        if (sliceHmm < 0.01) break;
+        const srcY = (yMm / pdfTotalH) * srcH;
+        const srcSliceH = (sliceHmm / pdfTotalH) * srcH;
+
+        const slice = document.createElement('canvas');
+        slice.width = srcW;
+        slice.height = Math.ceil(srcSliceH);
+        const sctx = slice.getContext('2d');
+        if (!sctx) throw new Error('Canvas context unavailable');
+        sctx.drawImage(
+          canvas,
+          0,
+          srcY,
+          srcW,
+          srcSliceH,
+          0,
+          0,
+          srcW,
+          srcSliceH
+        );
+        const sliceData = slice.toDataURL('image/png');
+        const slicePdfH = (slice.height * contentW) / srcW;
+
+        if (pageIndex > 0) pdf.addPage();
+        pdf.addImage(sliceData, 'PNG', margin, margin, contentW, slicePdfH);
+        yMm += sliceHmm;
+        pageIndex += 1;
       }
-      pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
 
       const safeName = summary.productLine.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').slice(0, 80);
       pdf.save(`scope-one-pager-${safeName}.pdf`);
@@ -104,6 +143,7 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
       console.error(e);
       alert('Could not generate PDF. Try print / Save as PDF instead.');
     } finally {
+      setPdfRendering(false);
       setPdfBusy(false);
     }
   }, [summary]);
@@ -119,7 +159,7 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">
           Internal · Product scope
         </p>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Scope one-pager</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">One-Pager</h1>
         <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">
           Condensed summary from the scope matrix: what this product line includes, where coverage is strongest, and
           where scope overlaps other lines (redundancy). Generated deterministically from live data — no external API.
@@ -192,142 +232,172 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
       <div
         ref={printRef}
         id="scope-one-pager-print"
-        className="rounded-xl border border-gray-200 bg-white p-8 text-gray-900 shadow-sm"
+        className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm overflow-hidden"
         style={{ fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}
       >
         {summary && (
           <>
-            <div className="border-b border-gray-200 pb-4 mb-4">
-              <h2 className="text-xl font-bold leading-tight">{summary.productLine}</h2>
-              <p className="text-[13px] text-gray-600 mt-1">
+            {/* PDF / print: main header only */}
+            <div className="px-8 pt-8 pb-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold leading-snug">{summary.productLine}</h2>
+              <p className="text-[13px] text-gray-600 mt-1.5 leading-normal">
                 Family: <span className="font-medium text-gray-800">{summary.family}</span>
                 {' · '}
                 <span className="text-gray-500">{summary.includedCount} / {summary.totalRows} offerings · {summary.coveragePct}% coverage</span>
               </p>
-              <p className="text-[11px] text-gray-400 mt-2">Generated {summary.generatedAt.slice(0, 10)} · Internal use</p>
+              <p className="text-[11px] text-gray-400 mt-2 leading-normal">Generated {summary.generatedAt.slice(0, 10)} · Internal use</p>
             </div>
 
-            <section className="mb-5">
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Scope statement</h3>
-              <p className="text-[14px] leading-relaxed text-gray-800">{renderBold(summary.scopeStatement)}</p>
-            </section>
-
-            <section className="mb-5">
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Digest</h3>
-              <ul className="space-y-2 text-[13px] leading-relaxed text-gray-800">
-                {summary.digestBullets.map((b, i) => (
-                  <li key={i} className="flex gap-2">
-                    <span className="text-blue-600 flex-shrink-0">•</span>
-                    <span>{renderBold(b)}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="mb-5">
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Coverage by category</h3>
-              <p className="text-[11px] text-gray-500 mb-2">
-                Click a row with included items to expand and see which offerings are in scope.
-              </p>
-              <div className="rounded-lg border border-gray-100 divide-y divide-gray-100 text-[12px]">
-                {summary.categoryBreakdown.map(c => {
-                  const includedRows = categoryIncludedRows.get(c.categoryId) ?? [];
-                  const canExpand = c.included > 0;
-                  const isOpen = expandedCategories.has(c.categoryId);
-                  const panelId = `coverage-panel-${c.categoryId}`;
-
-                  return (
-                    <div key={c.categoryId} className="bg-white">
-                      <button
-                        type="button"
-                        id={`coverage-trigger-${c.categoryId}`}
-                        aria-expanded={canExpand ? isOpen : false}
-                        aria-controls={canExpand ? panelId : undefined}
-                        disabled={!canExpand}
-                        onClick={() => canExpand && toggleCategory(c.categoryId)}
-                        className={[
-                          'w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors',
-                          canExpand
-                            ? 'hover:bg-gray-50 cursor-pointer'
-                            : 'cursor-default opacity-80',
-                        ].join(' ')}
-                      >
-                        <span className="flex items-start gap-2 min-w-0 flex-1">
-                          <span
-                            className={[
-                              'mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center text-gray-400',
-                              canExpand ? '' : 'invisible',
-                            ].join(' ')}
-                            aria-hidden
-                          >
-                            <svg
-                              className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </span>
-                          <span className="text-gray-800 font-medium truncate">{c.label}</span>
-                        </span>
-                        <span className="text-gray-600 flex-shrink-0 tabular-nums">
-                          {c.included}/{c.total}
-                        </span>
-                      </button>
-                      {canExpand && isOpen && (
-                        <div
-                          id={panelId}
-                          role="region"
-                          aria-labelledby={`coverage-trigger-${c.categoryId}`}
-                          className="px-3 pb-3 pl-10 pr-3"
-                        >
-                          <ul className="space-y-1.5 text-[11px] text-gray-700 leading-snug border-l-2 border-blue-100 pl-3 ml-0.5">
-                            {includedRows.map(row => (
-                              <li key={row.id}>{row.offering}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            {/* Tab strip — content below this tab panel */}
+            <div className="px-8 border-b border-gray-200 bg-gray-50/80">
+              <div
+                className="inline-flex items-center border-b-2 border-blue-600 text-blue-700 -mb-px pt-1 pb-2.5 px-0.5 text-[13px] font-semibold leading-normal"
+                aria-current="page"
+              >
+                One-Pager
               </div>
-            </section>
+            </div>
 
-            {summary.pricingNote && (
+            <div className="px-8 pb-8 pt-6">
               <section className="mb-5">
-                <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Pricing / commercial</h3>
-                <p className="text-[12px] leading-relaxed text-gray-800 bg-gray-50 border border-gray-100 rounded-lg p-3">
-                  {summary.pricingNote}
-                </p>
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Scope statement</h3>
+                <p className="text-[14px] leading-relaxed text-gray-800">{renderBold(summary.scopeStatement)}</p>
               </section>
-            )}
 
-            <section>
-              <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Redundancy & overlap</h3>
-              {summary.redundancyWithinFamily.length > 0 ? (
-                <div className="space-y-2 mb-3">
-                  {summary.redundancyWithinFamily.map((g, i) => (
-                    <p key={i} className="text-[12px] text-gray-800 bg-amber-50 border border-amber-100 rounded-lg p-3">
-                      <strong className="text-amber-900">Same scope in family ({g.family}):</strong>{' '}
-                      {g.names.join(' · ')}
-                    </p>
+              <section className="mb-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Digest</h3>
+                <ul className="space-y-2 text-[13px] leading-relaxed text-gray-800">
+                  {summary.digestBullets.map((b, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="text-blue-600 flex-shrink-0">•</span>
+                      <span>{renderBold(b)}</span>
+                    </li>
                   ))}
+                </ul>
+              </section>
+
+              <section className="mb-5">
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Coverage by category</h3>
+                {!pdfRendering && (
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    Click a row with included items to expand and see which offerings are in scope.
+                  </p>
+                )}
+                {pdfRendering && (
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    Included offerings listed under each category.
+                  </p>
+                )}
+                <div className="rounded-lg border border-gray-100 divide-y divide-gray-100 text-[12px]">
+                  {summary.categoryBreakdown.map(c => {
+                    const includedRows = categoryIncludedRows.get(c.categoryId) ?? [];
+                    const canExpand = c.included > 0;
+                    const isOpen = pdfRendering
+                      ? canExpand
+                      : expandedCategories.has(c.categoryId);
+                    const panelId = `coverage-panel-${c.categoryId}`;
+
+                    return (
+                      <div key={c.categoryId} className="bg-white">
+                        <button
+                          type="button"
+                          id={`coverage-trigger-${c.categoryId}`}
+                          aria-expanded={canExpand ? isOpen : false}
+                          aria-controls={canExpand ? panelId : undefined}
+                          disabled={!canExpand || pdfRendering}
+                          onClick={() => canExpand && toggleCategory(c.categoryId)}
+                          className={[
+                            'w-full flex items-start justify-between gap-3 px-3 py-2.5 text-left min-h-[2.75rem]',
+                            canExpand && !pdfRendering
+                              ? 'hover:bg-gray-50 cursor-pointer'
+                              : 'cursor-default',
+                            pdfRendering && canExpand ? 'bg-white' : '',
+                          ].join(' ')}
+                        >
+                          <span className="flex items-start gap-2 min-w-0 flex-1">
+                            <span
+                              className={[
+                                'mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center text-gray-400',
+                                canExpand ? '' : 'invisible',
+                              ].join(' ')}
+                              aria-hidden
+                            >
+                              <svg
+                                className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </span>
+                            <span
+                              className={[
+                                'text-gray-800 font-medium leading-normal',
+                                pdfRendering ? 'whitespace-normal break-words' : 'truncate',
+                              ].join(' ')}
+                            >
+                              {c.label}
+                            </span>
+                          </span>
+                          <span className="text-gray-600 flex-shrink-0 tabular-nums leading-normal pt-0.5">
+                            {c.included}/{c.total}
+                          </span>
+                        </button>
+                        {canExpand && isOpen && (
+                          <div
+                            id={panelId}
+                            role="region"
+                            aria-labelledby={`coverage-trigger-${c.categoryId}`}
+                            className="px-3 pb-3 pl-10 pr-3"
+                          >
+                            <ul className="space-y-1.5 text-[11px] text-gray-700 leading-snug border-l-2 border-blue-100 pl-3 ml-0.5">
+                              {includedRows.map(row => (
+                                <li key={row.id} className="leading-snug">{row.offering}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : (
-                <p className="text-[12px] text-gray-600 mb-3">No other line in this family has an identical full-matrix signature.</p>
+              </section>
+
+              {summary.pricingNote && (
+                <section className="mb-5">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Pricing / commercial</h3>
+                  <p className="text-[12px] leading-relaxed text-gray-800 bg-gray-50 border border-gray-100 rounded-lg p-3">
+                    {summary.pricingNote}
+                  </p>
+                </section>
               )}
-              {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).length > 0 && (
-                <p className="text-[12px] text-gray-800">
-                  <strong className="text-gray-700">Matrix-identical elsewhere:</strong>{' '}
-                  {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).join(', ')}
-                </p>
-              )}
-              {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).length === 0 && summary.redundancyWithinFamily.length === 0 && (
-                <p className="text-[12px] text-gray-600">Unique scope signature in the current dataset.</p>
-              )}
-            </section>
+
+              <section>
+                <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-2">Redundancy & overlap</h3>
+                {summary.redundancyWithinFamily.length > 0 ? (
+                  <div className="space-y-2 mb-3">
+                    {summary.redundancyWithinFamily.map((g, i) => (
+                      <p key={i} className="text-[12px] text-gray-800 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                        <strong className="text-amber-900">Same scope in family ({g.family}):</strong>{' '}
+                        {g.names.join(' · ')}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-gray-600 mb-3">No other line in this family has an identical full-matrix signature.</p>
+                )}
+                {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).length > 0 && (
+                  <p className="text-[12px] text-gray-800">
+                    <strong className="text-gray-700">Matrix-identical elsewhere:</strong>{' '}
+                    {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).join(', ')}
+                  </p>
+                )}
+                {summary.identicalScopeElsewhere.filter(n => n !== summary.productLine).length === 0 && summary.redundancyWithinFamily.length === 0 && (
+                  <p className="text-[12px] text-gray-600">Unique scope signature in the current dataset.</p>
+                )}
+              </section>
+            </div>
           </>
         )}
       </div>
