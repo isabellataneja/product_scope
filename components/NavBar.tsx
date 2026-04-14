@@ -4,13 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-/** Mirrors Commure Ambient app areas for design alignment (see docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md) */
 const tabs = [
-  { label: 'Visits', href: '/' },
-  { label: 'My Scribes', href: '/master' },
-  { label: 'Copilot', href: '/product-lines', title: 'Copilot / AI Studio' },
-  { label: 'Inbox', href: '/compare' },
-  { label: 'Menu', href: '/menu' },
+  { label: 'One-Pager', href: '/' },
+  { label: 'Master Sheet', href: '/master' },
+  { label: 'Product Lines', href: '/product-lines' },
+  { label: 'Compare', href: '/compare' },
 ];
 
 export default function NavBar() {
@@ -58,7 +56,6 @@ export default function NavBar() {
                 <Link
                   key={tab.href}
                   href={tab.href}
-                  title={'title' in tab ? tab.title : undefined}
                   className={[
                     'px-3 sm:px-4 h-12 flex items-center text-[13px] font-semibold border-b-2 transition-colors whitespace-nowrap',
                     active

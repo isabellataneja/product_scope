@@ -21,22 +21,22 @@ export default function MenuPage() {
         <ul className="space-y-2 text-[14px]">
           <li>
             <Link href="/" className="text-commure-blue-bright dark:text-commure-cyan hover:underline font-medium">
-              Visits — Scope one-pager
+              One-Pager
             </Link>
           </li>
           <li>
             <Link href="/master" className="text-commure-blue-bright dark:text-commure-cyan hover:underline font-medium">
-              My Scribes — Master scope sheet
+              Master Sheet
             </Link>
           </li>
           <li>
             <Link href="/product-lines" className="text-commure-blue-bright dark:text-commure-cyan hover:underline font-medium">
-              Copilot — Product lines
+              Product Lines
             </Link>
           </li>
           <li>
             <Link href="/compare" className="text-commure-blue-bright dark:text-commure-cyan hover:underline font-medium">
-              Inbox — Compare
+              Compare
             </Link>
           </li>
         </ul>
