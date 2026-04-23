@@ -1,5 +1,7 @@
 Internal **product scope** workspace for **Commure Ambient** (Assist & Live). UI aligns with the mobile healthcare scribe context — see [`docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md`](./docs/COMMURE_AMBIENT_DESIGN_CONTEXT.md).
 
+**Master sheet edits** (text, checkboxes) persist in **localStorage** in this browser and sync to the One-Pager, Product Lines, and Compare views. Use **History** in the toolbar to revert or **Reset to baseline** to restore bundled `scopeData.json`.
+
 ## Getting Started
 
 First, run the development server:

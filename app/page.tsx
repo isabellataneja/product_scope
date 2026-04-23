@@ -2,15 +2,13 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { ScopeRow } from '@/types';
-import rawData from '@/data/scopeData.json';
 import ScopeOnePager from '@/components/ScopeOnePager';
-
-const rows = rawData as ScopeRow[];
+import { useScopeData } from '@/components/ScopeDataProvider';
 
 function HomeInner() {
   const searchParams = useSearchParams();
   const pl = searchParams.get('pl');
+  const { rows } = useScopeData();
   return <ScopeOnePager rows={rows} initialProductLine={pl} />;
 }
 

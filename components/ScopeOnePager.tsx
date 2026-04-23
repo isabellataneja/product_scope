@@ -6,6 +6,7 @@ import type { ScopeRow } from '@/types';
 import { PRODUCT_LINES } from '@/data/productLines';
 import { buildProductScopeSummary, formatSummaryAsText, type ProductScopeSummary } from '@/lib/scopeSummary';
 import { getIncludedRowsInCategory } from '@/lib/utils';
+import EditHistoryPanel from '@/components/EditHistoryPanel';
 
 interface Props {
   rows: ScopeRow[];
@@ -162,7 +163,8 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">One-Pager</h1>
         <p className="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">
           Condensed summary from the scope matrix: what this product line includes, where coverage is strongest, and
-          where scope overlaps other lines (redundancy). Generated deterministically from live data — no external API.
+          where scope overlaps other lines (redundancy). Edits you make on the Master Sheet are saved in this browser and
+          reflected here automatically.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
@@ -196,7 +198,8 @@ export default function ScopeOnePager({ rows, initialProductLine }: Props) {
             ))}
           </select>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <EditHistoryPanel />
           <button
             type="button"
             onClick={downloadPdf}

@@ -1,17 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import type { ScopeRow } from '@/types';
-import rawData from '@/data/scopeData.json';
 import { FAMILY_GROUPS, PRODUCT_LINES } from '@/data/productLines';
 import ComparisonTable from '@/components/ComparisonTable';
 import MultiSelect from '@/components/MultiSelect';
-
-const rows = rawData as ScopeRow[];
+import { useScopeData } from '@/components/ScopeDataProvider';
 
 const COMPARISON_FAMILIES = Object.entries(FAMILY_GROUPS).filter(([, pls]) => pls.length > 1);
 
 export default function ComparePage() {
+  const { rows } = useScopeData();
   const [customSelected, setCustomSelected] = useState<string[]>([]);
   const [useCustom, setUseCustom] = useState(false);
 

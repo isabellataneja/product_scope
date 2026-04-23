@@ -1,41 +1,23 @@
 'use client';
 
-import { useState, useCallback, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { ScopeRow, CellValue } from '@/types';
-import rawData from '@/data/scopeData.json';
+import type { ScopeRow } from '@/types';
 import { CATEGORIES } from '@/data/categories';
 import ProductLineSidebar from '@/components/ProductLineSidebar';
 import FeatureSection from '@/components/FeatureSection';
 import ExportDropdown from '@/components/ExportDropdown';
-
-const initialRows = rawData as ScopeRow[];
+import { useScopeData } from '@/components/ScopeDataProvider';
+import EditHistoryPanel from '@/components/EditHistoryPanel';
 
 function MasterSheetInner() {
   const searchParams = useSearchParams();
-
-  const [rows, setRows] = useState<ScopeRow[]>(initialRows);
+  const { rows, updateCell } = useScopeData();
   const [selectedPLs, setSelectedPLs] = useState<string[]>(() => {
     const pl = searchParams.get('pl');
     return pl ? [pl] : [];
   });
   const [search, setSearch] = useState('');
-
-  const handleCellChange = useCallback((rowId: string, field: string, value: CellValue | string) => {
-    setRows(prev => prev.map(row => {
-      if (row.id !== rowId) return row;
-      const contextFields = ['offering', 'currentState', 'additionalInfo', 'siteSpecific',
-        'bestPractices', 'deviationCausesDelay', 'templateAdjustment', 'customFormatAdded', 'engBuildRequired'];
-      if (field.startsWith('pl:')) {
-        const plName = field.slice(3);
-        return { ...row, productLines: { ...row.productLines, [plName]: value as CellValue } };
-      }
-      if (contextFields.includes(field)) {
-        return { ...row, [field]: value };
-      }
-      return { ...row, productLines: { ...row.productLines, [field]: value as CellValue } };
-    }));
-  }, []);
 
   function togglePL(pl: string) {
     setSelectedPLs(prev => {
@@ -114,6 +96,7 @@ function MasterSheetInner() {
                 Clear comparison
               </button>
             )}
+            <EditHistoryPanel />
             <ExportDropdown rows={rows} />
           </div>
         </div>
@@ -155,7 +138,7 @@ function MasterSheetInner() {
                 rows={rowsByCategory[cat.id] ?? []}
                 selectedPLs={selectedPLs}
                 searchQuery={search}
-                onCellChange={handleCellChange}
+                onCellChange={updateCell}
               />
             ))
           )}

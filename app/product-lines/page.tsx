@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import type { ScopeRow } from '@/types';
-import rawData from '@/data/scopeData.json';
 import { PRODUCT_LINES } from '@/data/productLines';
 import ProductLineCard from '@/components/ProductLineCard';
-
-const rows = rawData as ScopeRow[];
+import { useScopeData } from '@/components/ScopeDataProvider';
 
 export default function ProductLinesPage() {
+  const { rows } = useScopeData();
   const [search, setSearch] = useState('');
   const [selectedFamily, setSelectedFamily] = useState('all');
 
